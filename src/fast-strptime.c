@@ -664,11 +664,31 @@ static mrb_value strptime_execi(mrb_state *mrb, mrb_value self) {
   return mrb_fixnum_value(ts.tv_sec);
 }
 
+static mrb_value
+mrb_strptime_init_copy(mrb_state *mrb, mrb_value copy)
+{
+  mrb_value src;
+
+  mrb_get_args(mrb, "o", &src);
+  if (mrb_obj_equal(mrb, copy, src)) return copy;
+  if (!mrb_obj_is_instance_of(mrb, src, mrb_obj_class(mrb, copy))) {
+    mrb_raise(mrb, E_TYPE_ERROR, "wrong argument class");
+  }
+  if (!DATA_PTR(copy)) {
+    DATA_PTR(copy) = (struct strptime_object *)mrb_malloc(mrb, sizeof(struct strptime_object));
+    DATA_TYPE(copy) = &mrb_strptime_type;
+  }
+  *(struct strptime_object *)DATA_PTR(copy) = *(struct strptime_object *)DATA_PTR(src);
+  return copy;
+}
+
 void mrb_mruby_fast_strptime_gem_init(mrb_state *mrb) {
   struct RClass *strptime_class =
       mrb_define_class(mrb, "Strptime", mrb->object_class);
   mrb_define_method(mrb, strptime_class, "initialize", strptime_initialize,
                     MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, strptime_class, "initialize_copy", mrb_strptime_init_copy,
+                    MRB_ARGS_NONE());
   mrb_define_method(mrb, strptime_class, "exec", strptime_exec,
                     MRB_ARGS_REQ(1));
   mrb_define_method(mrb, strptime_class, "execi", strptime_execi,
