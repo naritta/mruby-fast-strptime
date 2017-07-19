@@ -593,12 +593,14 @@ void **strptime_compile(mrb_state *mrb, const char *fmt, size_t flen) {
 
 struct strptime_object {
   void **isns;
+  const char *fmt;
 };
 
 static mrb_value strptime_initialize(mrb_state *mrb, mrb_value self) {
   mrb_value mfmt;
   mrb_get_args(mrb, "o", &mfmt);
-  const char *fmt = mrb_str_to_cstr(mrb, mfmt);
+  const char *fmt = RSTRING_PTR(mfmt);
+  mrb_gc_register(mrb, mfmt);
 
   struct strptime_object *tobj;
   void **isns;
@@ -608,7 +610,7 @@ static mrb_value strptime_initialize(mrb_state *mrb, mrb_value self) {
       (struct strptime_object *)mrb_malloc(mrb, sizeof(struct strptime_object));
 
   tobj->isns = isns;
-  mrb_iv_set(mrb, self, mrb_intern_lit(mrb, "@mfmt"), mfmt);
+  tobj->fmt = fmt;
 
   DATA_TYPE(self) = &mrb_strptime_type;
   DATA_PTR(self) = tobj;
@@ -624,14 +626,10 @@ static mrb_value strptime_exec(mrb_state *mrb, mrb_value self) {
   struct strptime_object *tobj;
   tobj = DATA_PTR(self);
 
-  mrb_value mfmt =
-          mrb_iv_get(mrb, self, mrb_intern_lit(mrb, "@mfmt"));
-  const char *fmt = mrb_str_to_cstr(mrb, mfmt);
-
   int r, gmtoff = INT_MAX;
   struct timespec ts;
 
-  r = strptime_exec0(mrb, tobj->isns, fmt, str, strlen(str), &ts,
+  r = strptime_exec0(mrb, tobj->isns, tobj->fmt, str, strlen(str), &ts,
                      &gmtoff);
 
   struct RClass *time_class;
@@ -651,14 +649,10 @@ static mrb_value strptime_execi(mrb_state *mrb, mrb_value self) {
   struct strptime_object *tobj;
   tobj = DATA_PTR(self);
 
-  mrb_value mfmt =
-            mrb_iv_get(mrb, self, mrb_intern_lit(mrb, "@mfmt"));
-  const char *fmt = mrb_str_to_cstr(mrb, mfmt);
-
   int r, gmtoff = INT_MAX;
   struct timespec ts;
 
-  r = strptime_exec0(mrb, tobj->isns, fmt, str, strlen(str), &ts,
+  r = strptime_exec0(mrb, tobj->isns, tobj->fmt, str, strlen(str), &ts,
                      &gmtoff);
 
   return mrb_fixnum_value(ts.tv_sec);
