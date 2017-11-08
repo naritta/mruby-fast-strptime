@@ -58,6 +58,20 @@ class ExeciTest < MTest::Unit::TestCase
   end
 end
 
+class UnmatchPatternTest < MTest::Unit::TestCase
+  def test_raise_exec
+    assert_raise(RuntimeError) do
+      Strptime.new('%Y-%m-%d %H:%M:%S.N %z').exec('2017-10-06 13:15:30.0 +00:00')
+    end
+  end
+
+  def test_raise_execi
+    assert_raise(RuntimeError) do
+      Strptime.new('%Y-%m-%d %H:%M:%S.N %z').execi('2017-10-06 13:15:30.0 +00:00')
+    end
+  end
+end
+
 if __FILE__ == $0
   MTest::Unit.new.run
 end
