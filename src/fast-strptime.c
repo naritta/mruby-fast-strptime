@@ -444,7 +444,7 @@ static int strptime_exec0(mrb_state *mrb, void **pc, const char *fmt,
     const char *qe = q + cnt;
     for (; q < qe; p++, q++) {
       if (*p != *q)
-        return 0;
+        return 1;
     }
     pc += 2;
     si += cnt;
@@ -632,6 +632,8 @@ static mrb_value strptime_exec(mrb_state *mrb, mrb_value self) {
   r = strptime_exec0(mrb, tobj->isns, tobj->fmt, str, strlen(str), &ts,
                      &gmtoff);
 
+  if (r) mrb_raise(mrb, E_RUNTIME_ERROR, "string doesn't match");
+
   struct RClass *time_class;
   time_class = mrb_class_get(mrb, "Time");
   mrb_value time_obj = mrb_obj_value(time_class);
@@ -654,6 +656,8 @@ static mrb_value strptime_execi(mrb_state *mrb, mrb_value self) {
 
   r = strptime_exec0(mrb, tobj->isns, tobj->fmt, str, strlen(str), &ts,
                      &gmtoff);
+
+  if (r) mrb_raise(mrb, E_RUNTIME_ERROR, "string doesn't match");
 
   return mrb_fixnum_value(ts.tv_sec);
 }
