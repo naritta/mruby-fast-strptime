@@ -24,11 +24,14 @@ MRuby::Build.new do |conf|
 
     # ... (snip) ...
 
+    conf.gem :github => 'naritta/mruby-fast-strptime'
     conf.gem :github => 'iij/mruby-mtest'
 end
 ```
-```ruby
-mruby test/mruby-fast-strptime.rb
+Then build mruby and run tests
+
+```
+$ mruby test/mruby-fast-strptime.rb
 ```
 
 ## License
