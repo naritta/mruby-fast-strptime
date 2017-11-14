@@ -480,17 +480,17 @@ static int strptime_exec0(mrb_state *mrb, void **pc, const char *fmt,
       tm.tm_sec = sec;
     } else {
       mrb_timespec_now(mrb, &ts);
-      if (gmt) {
+      // if (gmt) {
         t = ts.tv_sec;
         if (gmt == 2)
           t += gmtoff;
         gmtime_r(&t, &tm);
-      } else {
+      // } else {
         // other time zone is not supported in mruby
         // long off;
-        // localtime_with_gmtoff_zone(&ts.tv_sec, &tm, &off, NULL);
+        //localtime_r(&t, &tm);
         // gmtoff = (int)off;
-      }
+      // }
       if (mon != -1)
         goto setmonth;
       if (mday != -1)
