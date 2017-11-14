@@ -632,7 +632,7 @@ static mrb_value strptime_exec(mrb_state *mrb, mrb_value self) {
   r = strptime_exec0(mrb, tobj->isns, tobj->fmt, str, strlen(str), &ts,
                      &gmtoff);
 
-  if (r) mrb_raise(mrb, E_RUNTIME_ERROR, "string doesn't match");
+  if (r) mrb_raise(mrb, E_ARGUMENT_ERROR, "string doesn't match");
 
   struct RClass *time_class;
   time_class = mrb_class_get(mrb, "Time");
@@ -657,7 +657,7 @@ static mrb_value strptime_execi(mrb_state *mrb, mrb_value self) {
   r = strptime_exec0(mrb, tobj->isns, tobj->fmt, str, strlen(str), &ts,
                      &gmtoff);
 
-  if (r) mrb_raise(mrb, E_RUNTIME_ERROR, "string doesn't match");
+  if (r) mrb_raise(mrb, E_ARGUMENT_ERROR, "string doesn't match");
 
   return mrb_fixnum_value(ts.tv_sec);
 }
