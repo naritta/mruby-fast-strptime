@@ -11,6 +11,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
 #include <mruby/hash.h>
 #include <mruby/string.h>
 #include <mruby/range.h>
@@ -587,7 +588,9 @@ void **strptime_compile(mrb_state *mrb, const char *fmt, size_t flen) {
     }
   }
   *isns++ = insns_address_table['_' - 'A'];
-  realloc(isns0, sizeof(void *) * (isns - isns0));
+  if (realloc(isns0, sizeof(void *) * (isns - isns0)) == NULL) {
+    return NULL;
+  }
   return isns0;
 }
 
@@ -596,18 +599,24 @@ struct strptime_object {
   const char *fmt;
 };
 
-static mrb_value strptime_initialize(mrb_state *mrb, mrb_value self) {
+static
+mrb_value mrb_strptime_initialize(mrb_state *mrb, mrb_value self)
+{
+  const char *fmt;
   mrb_value mfmt;
-  mrb_get_args(mrb, "o", &mfmt);
-  const char *fmt = RSTRING_PTR(mfmt);
-  mrb_gc_register(mrb, mfmt);
-
-  struct strptime_object *tobj;
   void **isns;
 
+  struct strptime_object *tobj;
+
+  mrb_get_args(mrb, "o", &mfmt);
+  fmt = RSTRING_PTR(mfmt);
+  mrb_gc_register(mrb, mfmt);
+
   isns = strptime_compile(mrb, fmt, strlen(fmt));
-  tobj =
-      (struct strptime_object *)mrb_malloc(mrb, sizeof(struct strptime_object));
+  if (isns == NULL) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "failed to allocate memory");
+  }
+  tobj = (struct strptime_object *) mrb_malloc(mrb, sizeof(struct strptime_object));
 
   tobj->isns = isns;
   tobj->fmt = fmt;
@@ -618,41 +627,21 @@ static mrb_value strptime_initialize(mrb_state *mrb, mrb_value self) {
   return self;
 }
 
-static mrb_value strptime_exec(mrb_state *mrb, mrb_value self) {
+static
+mrb_value mrb_strptime_execi(mrb_state *mrb, mrb_value self)
+{
+  const char *str;
   mrb_value mstr;
-  mrb_get_args(mrb, "o", &mstr);
-  const char *str = mrb_str_to_cstr(mrb, mstr);
+  int r;
+  int gmtoff;
 
   struct strptime_object *tobj;
-  tobj = DATA_PTR(self);
-
-  int r, gmtoff = INT_MAX;
   struct timespec ts;
 
-  r = strptime_exec0(mrb, tobj->isns, tobj->fmt, str, strlen(str), &ts,
-                     &gmtoff);
-
-  if (r) mrb_raise(mrb, E_ARGUMENT_ERROR, "string doesn't match");
-
-  struct RClass *time_class;
-  time_class = mrb_class_get(mrb, "Time");
-  mrb_value time_obj = mrb_obj_value(time_class);
-
-  mrb_value time =
-      mrb_funcall(mrb, time_obj, "at", 1, mrb_fixnum_value(ts.tv_sec));
-  return time;
-}
-
-static mrb_value strptime_execi(mrb_state *mrb, mrb_value self) {
-  mrb_value mstr;
   mrb_get_args(mrb, "o", &mstr);
-  const char *str = mrb_str_to_cstr(mrb, mstr);
-
-  struct strptime_object *tobj;
+  str = mrb_str_to_cstr(mrb, mstr);
   tobj = DATA_PTR(self);
-
-  int r, gmtoff = INT_MAX;
-  struct timespec ts;
+  gmtoff = INT_MAX;
 
   r = strptime_exec0(mrb, tobj->isns, tobj->fmt, str, strlen(str), &ts,
                      &gmtoff);
@@ -662,8 +651,16 @@ static mrb_value strptime_execi(mrb_state *mrb, mrb_value self) {
   return mrb_fixnum_value(ts.tv_sec);
 }
 
-static mrb_value
-mrb_strptime_init_copy(mrb_state *mrb, mrb_value copy)
+static
+mrb_value mrb_strptime_exec(mrb_state *mrb, mrb_value self)
+{
+  mrb_value time_obj;
+  time_obj = mrb_obj_value(mrb_class_get(mrb, "Time"));
+  return mrb_funcall(mrb, time_obj, "at", 1, mrb_strptime_execi(mrb, self));
+}
+
+static
+mrb_value mrb_strptime_init_copy(mrb_state *mrb, mrb_value copy)
 {
   mrb_value src;
 
@@ -683,13 +680,13 @@ mrb_strptime_init_copy(mrb_state *mrb, mrb_value copy)
 void mrb_mruby_fast_strptime_gem_init(mrb_state *mrb) {
   struct RClass *strptime_class =
       mrb_define_class(mrb, "Strptime", mrb->object_class);
-  mrb_define_method(mrb, strptime_class, "initialize", strptime_initialize,
+  mrb_define_method(mrb, strptime_class, "initialize", mrb_strptime_initialize,
                     MRB_ARGS_REQ(1));
   mrb_define_method(mrb, strptime_class, "initialize_copy", mrb_strptime_init_copy,
                     MRB_ARGS_NONE());
-  mrb_define_method(mrb, strptime_class, "exec", strptime_exec,
+  mrb_define_method(mrb, strptime_class, "exec", mrb_strptime_exec,
                     MRB_ARGS_REQ(1));
-  mrb_define_method(mrb, strptime_class, "execi", strptime_execi,
+  mrb_define_method(mrb, strptime_class, "execi", mrb_strptime_execi,
                     MRB_ARGS_REQ(1));
 }
 
